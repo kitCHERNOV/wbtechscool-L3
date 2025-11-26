@@ -1,17 +1,13 @@
 package models
 
-import "time"
-
 type Notification struct {
-	ID        string `json:"id"`
-	UserID    string `json:"user_id"`
-	Message   string `json:"message"`
-	Timestamp int64  `json:"timestamp"` // Unix timestamp
-	Status    string `json:"status"`    // e.g., "pending", "sent", "failed"
+	UUID   string
+	Status string `json:"status"` // e.g., "pending", "sent", "failed"
+	NotificationCard
 }
 
-type CreateNotificationRequest struct {
-	UserID      string    `json:"user_id"`
-	Message     string    `json:"message"`
-	ScheduledAt time.Time `json:"scheduled_at"`
+type NotificationCard struct {
+	UserID      string `json:"user_id"`
+	Message     string `json:"message"`
+	ScheduledAt int64  `json:"scheduled_at"`
 }

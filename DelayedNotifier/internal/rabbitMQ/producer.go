@@ -1,56 +1,65 @@
 package rabbitMQ
 
 import (
+	"DelayedNotifier/internal/models"
 	"context"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"log"
 	"time"
-
-	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type QueueProps struct {
-	Channel *amqp.Channel
+	Channel         *amqp.Channel
+	WaitingExchange string
+	RoutingKey      string
+	// Add Redis DataBase... to storage
 }
 
-func NewQueueProps(ch *amqp.Channel) *QueueProps {
-	return &QueueProps{Channel: ch}
-}
-
-// CreateMainQueue declares a queue to hold messages.
-func (qp *QueueProps) CreateMainQueue(queueName string) (amqp.Queue, error) {
-	q, err := qp.Channel.QueueDeclare(
-		queueName, // name
-		false,     // durable
-		false,     // delete when unused
-		false,     // exclusive
-		false,     // no-wait
-		nil,       // arguments
-	)
-	if err != nil {
-		log.Printf("Failed to declare a queue: %s", err)
-		return amqp.Queue{}, err
+func NewQueueProps(ch *amqp.Channel, args ...string) *QueueProps {
+	return &QueueProps{
+		Channel:         ch,
+		WaitingExchange: args[0],
+		RoutingKey:      args[1],
 	}
-	return q, nil
 }
 
 // SendMessage publishes a message to the specified queue.
-func (qp *QueueProps) SendMessage(queueName string, body string) error {
+func (qp *QueueProps) SendMessage(notification models.Notification) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := qp.Channel.PublishWithContext(ctx,
-		"",        // exchange (default)
-		queueName, // routing key (the queue name)
-		false,     // mandatory
-		false,     // immediate
+	millisecondsDelay := time.Duration(notification.ScheduledAt) * time.Millisecond
+	headers := amqp.Table{
+		"x-delay": millisecondsDelay,
+	}
+
+	err := qp.Channel.PublishWithContext(
+		ctx,
+		qp.WaitingExchange,
+		qp.RoutingKey,
+		false,
+		false,
 		amqp.Publishing{
-			ContentType: "text/plain",
-			Body:        []byte(body),
-		})
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "text/plain",
+			Body:         []byte(notification.Message),
+			Headers:      headers,
+		},
+	)
+
 	if err != nil {
 		log.Printf("Failed to publish a message: %s", err)
 		return err
 	}
-	log.Printf(" [x] Sent %s to queue %s\n", body, queueName)
+
 	return nil
+}
+
+func (qp *QueueProps) GetMessageStatus(messageId string) (models.Notification, error) {
+	// TODO: to implement get status of certain message
+	return models.Notification{}, nil
+}
+
+func (qp *QueueProps) CancelMessageDelay(messageId string) (models.Notification, error) {
+	return models.Notification{}, nil
 }
