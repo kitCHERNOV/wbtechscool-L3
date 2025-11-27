@@ -1,0 +1,6 @@
+http_server:
+  address: "localhost:8081"
+db_path:
+  host: "localhost"
+  port: "6379"
+  username: "default"

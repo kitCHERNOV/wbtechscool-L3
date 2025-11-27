@@ -1,8 +1,12 @@
 package main
 
 import (
+	"DelayedNotifier/internal/config"
 	"DelayedNotifier/internal/handlers"
 	"DelayedNotifier/internal/rabbitMQ"
+	"DelayedNotifier/internal/redisdb"
+	"context"
+	"net"
 
 	//"context"
 	"fmt"
@@ -10,6 +14,7 @@ import (
 	"net/http"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/redis/go-redis/v9"
 )
 
 func SetBrokerConnection(connectionPath string) *amqp.Channel {
@@ -70,7 +75,16 @@ func SetBrokerConnection(connectionPath string) *amqp.Channel {
 
 func main() {
 	// config init
-	//cfg :=
+	cfg := config.MustLoad()
+
+	// Radis connection init
+	rdb := redisdb.DeclareRedisDataBase(redis.Options{
+		Addr:     net.JoinHostPort(cfg.Host, cfg.Port),
+		Password: cfg.Password,
+		DB:       0,
+		Protocol: 2,
+	})
+	defer rdb.Close()
 
 	// rabbitMQ init
 	const brokerConnectionPath = "amqp://admin:password@localhost:5672/"
@@ -133,7 +147,9 @@ func main() {
 	// TODO: – GET /notify/{id} — получение статуса уведомления;
 	// TODO: – DELETE /notify/{id} — отмена запланированного уведомления.
 
-	http.HandleFunc("/notify", handlers.NotificationRequest(channel))
+	ctx := context.Background()
+
+	http.HandleFunc("/notify", handlers.NotificationRequest(ctx, channel, rdb))
 
 	fmt.Println("Server is listening on port 8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
