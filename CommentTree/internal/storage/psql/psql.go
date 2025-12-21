@@ -1,6 +1,7 @@
 package psql
 
 import (
+	"CommentTree/internal/models"
 	"database/sql"
 	"fmt"
 
@@ -46,14 +47,14 @@ func New(storagePath string) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
-func (s *Storage) CreateComment(comment string, authorId, articleId int, parentComment string) (uuid.UUID, error) {
+func (s *Storage) CreateComment(comment string, authorId, articleId int, parentCommentID int) (uuid.UUID, error) {
 	return uuid.Nil, nil
 }
 
-func (s *Storage) DeleteComment(articleId, authorId int) error {
-	return nil
+func (s *Storage) GetComments(articleId int) (models.Comments, error) {
+	return models.Comments{}, nil
 }
 
-func (s *Storage) GetComments(articleId int) ([]string, error) {
-	return nil, nil
+func (s *Storage) DeleteComment(commentID int) error {
+	return nil
 }

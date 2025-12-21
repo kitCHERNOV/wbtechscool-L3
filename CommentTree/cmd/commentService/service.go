@@ -39,8 +39,8 @@ func main() {
 	router.Use(middleware.Logger)
 	router.Use(middleware.URLFormat)
 
-	router.Get("/comments", handlers.CreateComment(log, storage))
-	router.Post("/comments", func(w http.ResponseWriter, r *http.Request) {})
+	router.Post("/comments", handlers.CreateComment(log, storage))
+	router.Get("/comments", handlers.GetComments(log, storage))
 	router.Delete("/comments/{id}", func(w http.ResponseWriter, r *http.Request) {})
 
 	// TODO: implement server graceful shutdown
