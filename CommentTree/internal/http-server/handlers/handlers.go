@@ -17,6 +17,7 @@ import (
 // Types of requests and responses
 
 type CommentSaver interface {
+	CreateCommentTree(articleId uuid.UUID, articleName string, authorId int) error
 	CreateComment(comment string, authorId, articleId int, parentCommentID int) (uuid.UUID, error)
 	GetComments(articleId int) (models.Comments, error)
 	DeleteComment(commentID int) error
@@ -75,8 +76,7 @@ func CreateComment(log *slog.Logger, commentSaver CommentSaver) http.HandlerFunc
 			render.JSON(w, r, createCommentResponse{
 				uuid.Nil,
 				Response{
-					http.StatusInternalServerError,
-					err,
+					Status: http.StatusInternalServerError,
 				},
 			})
 		} else if id != uuid.Nil {

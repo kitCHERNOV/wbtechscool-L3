@@ -6,7 +6,6 @@ import (
 	"CommentTree/internal/models"
 	"CommentTree/internal/storage/psql"
 	"log/slog"
-	"net/http"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5/middleware"
@@ -41,7 +40,7 @@ func main() {
 
 	router.Post("/comments", handlers.CreateComment(log, storage))
 	router.Get("/comments", handlers.GetComments(log, storage))
-	router.Delete("/comments/{id}", func(w http.ResponseWriter, r *http.Request) {})
+	router.Delete("/comments/{id}", handlers.DeleteComment(log, storage))
 
 	// TODO: implement server graceful shutdown
 }
