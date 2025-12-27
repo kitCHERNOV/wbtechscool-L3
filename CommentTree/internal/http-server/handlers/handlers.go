@@ -19,7 +19,7 @@ import (
 type CommentSaver interface {
 	CreateCommentTree(articleId uuid.UUID, articleName string, authorId int) error
 	CreateComment(comment string, authorId, articleId int, parentCommentID int) (uuid.UUID, error)
-	GetComments(articleId int) (models.Comments, error)
+	GetComments(articleId uuid.UUID) (models.Comments, error)
 	DeleteComment(commentID int) error
 }
 
@@ -113,7 +113,8 @@ func GetComments(log *slog.Logger, commentSaver CommentSaver) http.HandlerFunc {
 			})
 		}
 
-		intParentID, err := strconv.Atoi(parentID)
+		//intParentID, err := strconv.Atoi(parentID)
+		intParentID, err := uuid.Parse(parentID)
 		if err != nil {
 			log.Error(fmt.Sprint(op+"parentID is invalid"), "url", r.URL)
 			render.JSON(w, r, getCommentsResponse{

@@ -26,7 +26,7 @@ func New(storagePath string) (*Storage, error) {
 	CREATE TABLE IF NOT EXISTS comments(
 		id UUID PRIMARY KEY DEFAULT gen_random_uuid(), -- id комментариев
 		article_id INTEGER NOT NULL, -- id статьи комментария
-		parent_id  BIGINT, -- для простоты создания и поиска
+		parent_id  UUID, -- для простоты создания и поиска
 		path ltree NOT NULL, -- id путь в древовидном представлении
 		content TEXT NOT NULL, -- сам комментарий
 		author_id INTEGER NOT NULL, -- id автора, чтобы владелец комментария мог удалить и ответы к нему
@@ -59,7 +59,7 @@ func (s *Storage) CreateCommentTree(articleId uuid.UUID, articleName string, aut
 		return fmt.Errorf("%s: preparing statement error; %w", op, err)
 	}
 
-	_, err = stmt.Exec(articleId, articleId, articleName, authorId)
+	_, err = stmt.Exec(articleId, articleId, articleId, "", authorId)
 	if err != nil {
 		return fmt.Errorf("%s: executing statement error; %w", op, err)
 	}
@@ -94,8 +94,35 @@ func (s *Storage) CreateComment(comment string, authorId, articleId int, parentC
 	return uuid.Nil, nil
 }
 
-func (s *Storage) GetComments(articleId int) (models.Comments, error) {
-	return models.Comments{}, nil
+func (s *Storage) GetComments(articleId uuid.UUID) (*models.Comments, error) {
+	const op = "storage.psql.GetComments"
+	// TODO: check if columns are correct
+	rows, err := s.db.Query(`SELECT content, parent_id, id, path FROM comments WHERE path <@ $1 ORDER BY path;`, articleId)
+	if err != nil {
+		return nil, fmt.Errorf("%s query error to get all comments; %w", op, err)
+	}
+	defer rows.Close()
+	var Comments = map[string]models.Comments{}
+	var rootComment models.Comments
+	for rows.Next() {
+		// saved last parameter
+
+		var comment models.Comments
+		err := rows.Scan(&comment.CommentText, &comment.ParentID, &comment.CommentID, &comment.Path)
+		if err != nil {
+			return nil, fmt.Errorf("%s row scanning error; %w", op, err)
+		}
+
+		// Only if current comment UUID is equal given articleUUID (it mean comment is article)
+		if parsedUUID, err := uuid.Parse(comment.ParentID); parsedUUID == articleId && err == nil {
+			rootComment = comment
+		} else {
+			return nil, fmt.Errorf("%s parse uuid error; %w", op, err)
+		}
+		Comments[comment.ParentID] = comment
+	}
+
+	return &rootComment, nil
 }
 
 func (s *Storage) DeleteComment(commentID int) error {
