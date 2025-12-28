@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дерево комментариев</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        /* Поиск */
+        .search-box {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .search-box button {
+            padding: 12px 24px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: background 0.3s;
+        }
+
+        .search-box button:hover {
+            background: #45a049;
+        }
+
+        /* Форма создания комментария */
+        .create-form {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .create-form h3 {
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+        }
+
+        .btn-submit {
+            background: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .btn-submit:hover {
+            background: #0b7dda;
+        }
+
+        /* Дерево комментариев */
+        .comments-tree {
+            margin-top: 20px;
+        }
+
+        .comment {
+            background: #fafafa;
+            border-left: 3px solid #4CAF50;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .comment.nested {
+            margin-left: 30px;
+            border-left-color: #2196F3;
+        }
+
+        .comment.nested .comment {
+            border-left-color: #FF9800;
+        }
+
+        .comment.highlight {
+            background: #fff9c4;
+            border-left-color: #FFC107;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .comment-meta {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .comment-id {
+            font-family: 'Courier New', monospace;
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        .comment-text {
+            margin-bottom: 10px;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        .comment-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-reply,
+        .btn-delete {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .btn-reply {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-reply:hover {
+            background: #0b7dda;
+        }
+
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #da190b;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+            font-size: 16px;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c62828;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>💬 Дерево комментариев</h1>
+
+    <!-- Поиск -->
+    <div class="search-box">
+        <input
+                type="text"
+                id="searchInput"
+                placeholder="Поиск по тексту комментария..."
+                autocomplete="off">
+        <button onclick="searchComments()">🔍 Найти</button>
+        <button onclick="clearSearch()" style="background: #757575;">Очистить</button>
+    </div>
+
+    <!-- Сообщения об ошибках -->
+    <div id="errorContainer"></div>
+
+    <!-- Форма создания корневого комментария -->
+    <div class="create-form">
+        <h3>Новый комментарий</h3>
+        <div class="form-group">
+            <label>Article ID (UUID корня):</label>
+            <input type="text" id="articleId" placeholder="00000000-0000-0000-0000-000000000000">
+        </div>
+        <div class="form-group">
+            <label>Author ID:</label>
+            <input type="number" id="authorId" value="1">
+        </div>
+        <div class="form-group">
+            <label>Текст комментария:</label>
+            <textarea id="commentText" placeholder="Введите ваш комментарий..."></textarea>
+        </div>
+        <button class="btn-submit" onclick="createRootComment()">Создать корневой комментарий</button>
+    </div>
+
+    <!-- Дерево комментариев -->
+    <div class="comments-tree">
+        <h2 style="margin-bottom: 20px;">Комментарии</h2>
+        <div id="commentsContainer">
+            <div class="loading">Загрузка комментариев...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Конфигурация API
+    const API_URL = 'http://localhost:8080'; // Измените на ваш адрес сервера
+
+    let currentArticleId = null;
+    let allComments = [];
+
+    // Загрузка комментариев при старте
+    window.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const articleId = urlParams.get('article') || document.getElementById('articleId').value;
+
+        if (articleId && articleId !== '00000000-0000-0000-0000-000000000000') {
+            currentArticleId = articleId;
+            loadComments(articleId);
+        }
+    });
+
+    // Загрузка дерева комментариев
+    async function loadComments(articleId) {
+        try {
+            showLoading();
+            const response = await fetch(`${API_URL}/comments?parent=${articleId}`);
+            const data = await response.json();
+
+            if (data.status !== 200) {
+                throw new Error(data.error || 'Ошибка загрузки комментариев');
+            }
+
+            currentArticleId = articleId;
+            document.getElementById('articleId').value = articleId;
+
+            allComments = flattenComments(data.comments);
+            renderComments(data.comments);
+            clearError();
+        } catch (error) {
+            showError('Ошибка загрузки: ' + error.message);
+            document.getElementById('commentsContainer').innerHTML =
+                '<div class="empty-state">Не удалось загрузить комментарии</div>';
+        }
+    }
+
+    // Преобразование дерева в плоский список для поиска
+    function flattenComments(comment, result = []) {
+        if (!comment) return result;
+
+        result.push(comment);
+        if (comment.sub_comments) {
+            comment.sub_comments.forEach(sub => flattenComments(sub, result));
+        }
+        return result;
+    }
+
+    // Отрисовка дерева комментариев
+    function renderComments(rootComment) {
+        const container = document.getElementById('commentsContainer');
+
+        if (!rootComment || !rootComment.sub_comments || rootComment.sub_comments.length === 0) {
+            container.innerHTML = `
+                    <div class="empty-state">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5z"></path>
+                        </svg>
+                        <p>Пока нет комментариев. Создайте первый!</p>
+                    </div>
+                `;
+            return;
+        }
+
+        container.innerHTML = rootComment.sub_comments.map(comment =>
+            renderComment(comment, 0)
+        ).join('');
+    }
+
+    // Рекурсивная отрисовка одного комментария
+    function renderComment(comment, level) {
+        const nestedClass = level > 0 ? 'nested' : '';
+        const subCommentsHtml = comment.sub_comments && comment.sub_comments.length > 0
+            ? comment.sub_comments.map(sub => renderComment(sub, level + 1)).join('')
+            : '';
+
+        return `
+                <div class="comment ${nestedClass}" data-id="${comment.comment_id}">
+                    <div class="comment-header">
+                        <div class="comment-meta">
+                            <span class="comment-id">${comment.comment_id.substring(0, 8)}...</span>
+                            <span style="margin-left: 10px;">Уровень: ${level}</span>
+                        </div>
+                    </div>
+                    <div class="comment-text">${escapeHtml(comment.comment_text || 'Корневой элемент')}</div>
+                    <div class="comment-actions">
+                        <button class="btn-reply" onclick="showReplyForm('${comment.comment_id}')">
+                            ↩️ Ответить
+                        </button>
+                        <button class="btn-delete" onclick="deleteComment('${comment.comment_id}')">
+                            🗑️ Удалить
+                        </button>
+                    </div>
+                    ${subCommentsHtml}
+                </div>
+            `;
+    }
+
+    // Создание корневого комментария
+    async function createRootComment() {
+        const articleId = document.getElementById('articleId').value;
+        const authorId = parseInt(document.getElementById('authorId').value);
+        const commentText = document.getElementById('commentText').value;
+
+        if (!articleId || !commentText) {
+            showError('Заполните все поля');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    article_id: articleId,
+                    parent_id: articleId, // Корневой комментарий ссылается на article_id
+                    author_id: authorId,
+                    comment_text: commentText
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.status !== 201) {
+                throw new Error(data.error || 'Ошибка создания комментария');
+            }
+
+            document.getElementById('commentText').value = '';
+            loadComments(articleId);
+            showSuccess('Комментарий создан!');
+        } catch (error) {
+            showError('Ошибка: ' + error.message);
+        }
+    }
+
+    // Показать форму ответа
+    function showReplyForm(parentId) {
+        const replyText = prompt('Введите текст ответа:');
+        if (!replyText) return;
+
+        createReply(parentId, replyText);
+    }
+
+    // Создание ответа на комментарий
+    async function createReply(parentId, text) {
+        const authorId = parseInt(document.getElementById('authorId').value);
+
+        try {
+            const response = await fetch(`${API_URL}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    article_id: currentArticleId,
+                    parent_id: parentId,
+                    author_id: authorId,
+                    comment_text: text
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.status !== 201) {
+                throw new Error(data.error || 'Ошибка создания ответа');
+            }
+
+            loadComments(currentArticleId);
+            showSuccess('Ответ добавлен!');
+        } catch (error) {
+            showError('Ошибка: ' + error.message);
+        }
+    }
+
+    // Удаление комментария
+    async function deleteComment(commentId) {
+        if (!confirm('Удалить комментарий и все ответы к нему?')) return;
+
+        try {
+            const response = await fetch(`${API_URL}/comments/${commentId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (data.status !== 200) {
+                throw new Error(data.error || 'Ошибка удаления');
+            }
+
+            loadComments(currentArticleId);
+            showSuccess('Комментарий удален!');
+        } catch (error) {
+            showError('Ошибка: ' + error.message);
+        }
+    }
+
+    // Поиск комментариев
+    function searchComments() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        if (!query) {
+            clearSearch();
+            return;
+        }
+
+        document.querySelectorAll('.comment').forEach(el => {
+            el.classList.remove('highlight');
+        });
+
+        const found = allComments.filter(c =>
+            c.comment_text && c.comment_text.toLowerCase().includes(query)
+        );
+
+        found.forEach(comment => {
+            const el = document.querySelector(`[data-id="${comment.comment_id}"]`);
+            if (el) {
+                el.classList.add('highlight');
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+
+        if (found.length === 0) {
+            showError(`Ничего не найдено по запросу "${query}"`);
+        } else {
+            showSuccess(`Найдено: ${found.length}`);
+        }
+    }
+
+    // Очистка поиска
+    function clearSearch() {
+        document.getElementById('searchInput').value = '';
+        document.querySelectorAll('.comment').forEach(el => {
+            el.classList.remove('highlight');
+        });
+    }
+
+    // Утилиты
+    function showLoading() {
+        document.getElementById('commentsContainer').innerHTML =
+            '<div class="loading">Загрузка...</div>';
+    }
+
+    function showError(message) {
+        const container = document.getElementById('errorContainer');
+        container.innerHTML = `<div class="error">${message}</div>`;
+        setTimeout(() => container.innerHTML = '', 5000);
+    }
+
+    function showSuccess(message) {
+        const container = document.getElementById('errorContainer');
+        container.innerHTML = `<div class="error" style="background:#e8f5e9;color:#2e7d32;border-color:#2e7d32">${message}</div>`;
+        setTimeout(() => container.innerHTML = '', 3000);
+    }
+
+    function clearError() {
+        document.getElementById('errorContainer').innerHTML = '';
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+</body>
+</html>

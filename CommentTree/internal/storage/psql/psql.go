@@ -23,7 +23,7 @@ func New(storagePath string) (*Storage, error) {
 	}
 
 	// TODO: to repair create request to db
-	stmt, err := db.Prepare(`
+	_, err = db.Exec(`
 	CREATE TABLE IF NOT EXISTS comments(
 		id UUID PRIMARY KEY DEFAULT gen_random_uuid(), -- id комментариев
 		article_id UUID NOT NULL, -- id статьи комментария
@@ -37,11 +37,6 @@ func New(storagePath string) (*Storage, error) {
 	CREATE INDEX comments_article_path_idx ON comments (article_id, path);
 	`)
 
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-
-	_, err = stmt.Exec()
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

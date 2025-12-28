@@ -5,9 +5,11 @@ import (
 	"CommentTree/internal/http-server/middleware/logger"
 	"CommentTree/internal/models"
 	"CommentTree/internal/storage/psql"
+	"fmt"
 	"log/slog"
+	"net/http"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
 	_ "github.com/lib/pq"
@@ -19,7 +21,7 @@ func main() {
 	// WARN: temporally config data
 	cfg := models.Config{
 		LogsFile:    "logs/comment_service.log",
-		StoragePath: "host=localhost port=5455 user=postresUser password=postresPW dbname=postgres sslmode=disable",
+		StoragePath: "host=localhost port=5455 user=postgresUser password=postgresPW dbname=postgres sslmode=disable",
 	}
 
 	// TODO: create middleware with logger
@@ -43,4 +45,9 @@ func main() {
 	router.Delete("/comments/{id}", handlers.DeleteComment(log, storage))
 
 	// TODO: implement server graceful shutdown
+
+	fmt.Println("server is starting on localhost:8080")
+	if err := http.ListenAndServe("localhost:8080", router); err != nil {
+		panic("Server is interrupted")
+	}
 }
