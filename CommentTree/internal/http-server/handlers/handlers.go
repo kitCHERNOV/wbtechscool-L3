@@ -7,7 +7,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
@@ -17,17 +16,17 @@ import (
 // Types of requests and responses
 
 type CommentSaver interface {
-	CreateCommentTree(articleId uuid.UUID, articleName string, authorId int) error
-	CreateComment(comment string, authorId, articleId int, parentCommentID int) (uuid.UUID, error)
-	GetComments(articleId uuid.UUID) (models.Comments, error)
-	DeleteComment(commentID int) error
+	CreateCommentTree(articleId uuid.UUID, authorId int) error
+	CreateComment(comment string, authorId int, articleId uuid.UUID, parentCommentID uuid.UUID) (uuid.UUID, error)
+	GetComments(articleId uuid.UUID) (*models.Comments, error)
+	DeleteComment(commentID uuid.UUID) error
 }
 
 type createCommentRequest struct {
-	ArticleID   int    `json:"article_id"`
+	ArticleID   string `json:"article_id"`
 	AuthorID    int    `json:"author_id"`
 	CommentText string `json:"comment_text"`
-	ParentID    int    `json:"parent_id"`
+	ParentID    string `json:"parent_id"`
 }
 
 type createCommentResponse struct {
@@ -41,8 +40,8 @@ type getCommentsResponse struct {
 }
 
 type Response struct {
-	Status int   `json:"status"`
-	Error  error `json:"error,omitempty"`
+	Status int    `json:"status"`
+	Error  string `json:"error,omitempty"`
 }
 
 // CreateComment godoc
@@ -62,15 +61,53 @@ func CreateComment(log *slog.Logger, commentSaver CommentSaver) http.HandlerFunc
 		data, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Error("reading body error", "error", err)
+			render.JSON(w, r, createCommentResponse{
+				Response: Response{
+					Status: http.StatusBadRequest,
+					Error:  "failed to read request body",
+				},
+			})
+			return
 		}
 
 		var req createCommentRequest
 		err = json.Unmarshal(data, &req)
 		if err != nil {
 			log.Error("json unmarshal error", "error", err)
+			render.JSON(w, r, createCommentResponse{
+				Response: Response{
+					Status: http.StatusBadRequest,
+					Error:  "invalid JSON format",
+				},
+			})
+			return
 		}
 
-		id, err := commentSaver.CreateComment(req.CommentText, req.AuthorID, req.ArticleID, req.ParentID)
+		articleID, err := uuid.Parse(req.ArticleID)
+		if err != nil {
+			log.Error("parse article_id error", "error", err)
+			render.JSON(w, r, createCommentResponse{
+				Response: Response{
+					Status: http.StatusBadRequest,
+					Error:  "invalid article_id format",
+				},
+			})
+			return
+		}
+
+		parentID, err := uuid.Parse(req.ParentID)
+		if err != nil {
+			log.Error("parse parent_id error", "error", err)
+			render.JSON(w, r, createCommentResponse{
+				Response: Response{
+					Status: http.StatusBadRequest,
+					Error:  "invalid parent_id format",
+				},
+			})
+			return
+		}
+
+		id, err := commentSaver.CreateComment(req.CommentText, req.AuthorID, articleID, parentID)
 		if err != nil {
 			log.Error("create comment error", "error", err)
 			render.JSON(w, r, createCommentResponse{
@@ -85,7 +122,7 @@ func CreateComment(log *slog.Logger, commentSaver CommentSaver) http.HandlerFunc
 				CommentID: uuid.Nil,
 				Response: Response{
 					Status: http.StatusInternalServerError,
-					Error:  fmt.Errorf("create comment error; id is nil"),
+					Error:  fmt.Sprintf("create comment error; id is nil"),
 				},
 			})
 		}
@@ -108,7 +145,7 @@ func GetComments(log *slog.Logger, commentSaver CommentSaver) http.HandlerFunc {
 			render.JSON(w, r, getCommentsResponse{
 				Response: Response{
 					Status: http.StatusBadRequest,
-					Error:  fmt.Errorf("parent id is required"),
+					Error:  fmt.Sprintf("parent id is required"),
 				},
 			})
 		}
@@ -120,7 +157,7 @@ func GetComments(log *slog.Logger, commentSaver CommentSaver) http.HandlerFunc {
 			render.JSON(w, r, getCommentsResponse{
 				Response: Response{
 					Status: http.StatusBadRequest,
-					Error:  fmt.Errorf("parent id is required"),
+					Error:  fmt.Sprintf("parent id is required"),
 				},
 			})
 		}
@@ -130,13 +167,13 @@ func GetComments(log *slog.Logger, commentSaver CommentSaver) http.HandlerFunc {
 			render.JSON(w, r, getCommentsResponse{
 				Response: Response{
 					Status: http.StatusInternalServerError,
-					Error:  fmt.Errorf("Internal server error"),
+					Error:  fmt.Sprintf("Internal server error"),
 				},
 			})
 		}
 
 		render.JSON(w, r, getCommentsResponse{
-			Comments: comments,
+			Comments: *comments,
 			Response: Response{
 				Status: http.StatusOK,
 			},
@@ -152,15 +189,15 @@ func DeleteComment(log *slog.Logger, commentSaver CommentSaver) http.HandlerFunc
 			log.Error(fmt.Sprint(op+"chiID is empty"), "url", r.URL)
 			render.JSON(w, r, Response{
 				Status: http.StatusBadRequest,
-				Error:  fmt.Errorf("chiID is required"),
+				Error:  fmt.Sprintf("chiID is required"),
 			})
 		}
-		commentID, err := strconv.Atoi(strChiID)
+		commentID, err := uuid.Parse(strChiID)
 		if err != nil {
 			log.Error(fmt.Sprint(op+"GetComments id is invalid"), "url", r.URL)
 			render.JSON(w, r, Response{
 				Status: http.StatusBadRequest,
-				Error:  fmt.Errorf("id is incorrect"),
+				Error:  fmt.Sprintf("id is incorrect"),
 			})
 		}
 

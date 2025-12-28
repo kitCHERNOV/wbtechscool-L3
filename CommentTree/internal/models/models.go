@@ -6,10 +6,10 @@ type Config struct {
 }
 
 type Comments struct {
-	CommentText string      `json:"comment_text,omitempty"`
-	ParentID    string      `json:"parent_id,omitempty"`
 	CommentID   string      `json:"comment_id,omitempty"`
+	ParentID    string      `json:"parent_id,omitempty"`
 	Path        string      `json:"path,omitempty"`
+	CommentText string      `json:"comment_text,omitempty"`
 	SubComments []*Comments `json:"sub_comments,omitempty"`
 }
 
