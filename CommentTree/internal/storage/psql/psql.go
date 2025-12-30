@@ -33,8 +33,8 @@ func New(storagePath string) (*Storage, error) {
 		author_id INT NOT NULL, -- id автора, чтобы владелец комментария мог удалить и ответы к нему
 		created_at TIMESTAMP NOT NULL DEFAULT now()
 		);
-	create index path_gist_idx on comments using GIST (path);
-	CREATE INDEX comments_article_path_idx ON comments (article_id, path);
+	create index IF NOT EXISTS path_gist_idx on comments using GIST (path);
+	CREATE INDEX IF NOT EXISTS comments_article_path_idx ON comments (article_id, path);
 	`)
 
 	if err != nil {

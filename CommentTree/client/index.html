@@ -33,6 +33,45 @@
             font-size: 28px;
         }
 
+        /* Article Actions */
+        .article-actions {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+        }
+
+        .article-actions button {
+            padding: 12px 20px;
+            background: #007bff; /* A nice blue for primary actions */
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: background 0.3s;
+            white-space: nowrap; /* Prevent button text from wrapping */
+        }
+
+        .article-actions button:hover {
+            background: #0056b3;
+        }
+
+        .article-actions input {
+            flex: 1; /* Allow input to grow */
+            min-width: 200px; /* Minimum width to prevent it from becoming too small */
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .article-actions input:focus {
+            outline: none;
+            border-color: #007bff; /* Highlight focus with button color */
+        }
+
         /* Поиск */
         .search-box {
             margin-bottom: 30px;
@@ -243,6 +282,13 @@
 <body>
 <div class="container">
     <h1>💬 Дерево комментариев</h1>
+
+    <!-- Article Actions -->
+    <div class="article-actions">
+        <button onclick="createNewArticle()">➕ Создать новую статью</button>
+        <input type="text" id="goToArticleId" placeholder="ID статьи (UUID)..." autocomplete="off">
+        <button onclick="goToArticle()">➡️ Перейти к статье</button>
+    </div>
 
     <!-- Поиск -->
     <div class="search-box">
@@ -549,6 +595,22 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // Создание новой статьи (генерация UUID и переход)
+    function createNewArticle() {
+        const newArticleId = crypto.randomUUID();
+        window.location.href = `?article=${newArticleId}`;
+    }
+
+    // Переход к статье по ID
+    function goToArticle() {
+        const articleId = document.getElementById('goToArticleId').value;
+        if (articleId) {
+            window.location.href = `?article=${articleId}`;
+        } else {
+            showError('Пожалуйста, введите ID статьи для перехода.');
+        }
     }
 </script>
 </body>
